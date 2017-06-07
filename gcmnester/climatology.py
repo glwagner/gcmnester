@@ -194,7 +194,7 @@ class ecco:
                 latitude-longitude limits of the region to be extracted.
                 The input latitudes must lie between -90 and 90 and the
                 input longitudes must lie between -180 and 180.
-                For example, to extract a box between 20S and 40N, and
+                For example, to extract a region between 20S and 40N, and
                 30W and 5E, set box = [-20, 40, -30, 5].
 
             fields (list): A list of strings corresponding to data fields to 
@@ -263,11 +263,11 @@ class ecco:
 
         # Raise hell if something is amiss
         if not -180 <= east <= 180 or not -180 <= west <= 180:
-            raise(ValueError, "Longitudes must lie between +/-180 degrees")
+            raise ValueError("Longitudes must lie between +/-180 degrees")
         elif south < -90 or north > 90:
-            raise(ValueError, "Latitudes must lie between +/-90 degrees.")
+            raise ValueError("Latitudes must lie between +/-90 degrees.")
         elif east == west or south == north:
-            raise(ValueError, "Latitudes and longitudes must not be unique!")
+            raise ValueError("Latitudes and longitudes must not be unique!")
 
         # Wrapping is needed if coordinates cross the prime meridian
         if west > east: 

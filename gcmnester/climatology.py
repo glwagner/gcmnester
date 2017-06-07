@@ -24,13 +24,14 @@ class ecco:
             ECCO fields.
 
             Args:
+                fields (list): A list of strings corresponding to data fields to 
+                    initialize in self.data.
+
                 grid (str): The grid on which the data is stored. The options
                     are 'LatLon' for ECCO data interpolated onto a 0.5 deg
                     Latitude-Longitude grid, or 'LLC' for ECCO data on its
                     native nominal 1 deg LLC0090 grid.
 
-                fields (list): A list of strings corresponding to data fields to 
-                    initialize in self.data.
 
             Note:
                 ECCO data is stored in NetCDF3 files. Each variable has its
@@ -109,16 +110,50 @@ class ecco:
 
 
 
-    def extract_global_data(self, fields=['THETA', 'SALT'], 
-        months=[0], grid=None):
+    def extract_globe(self, fields, months, grid=None):
+        
+        """Extract global, full-depth data for the indicated fields and months
+        on the indicated grid.
 
+
+        Args:
+            fields (list): A list of strings corresponding to data fields to 
+                extract.
+
+            months (list): A list of integers corresponding to months to
+                extract. The count starts are 0 and each value must be between
+                0 and 11.
+
+            grid (str): The grid on which the data is stored. The options
+                are 'LatLon' for ECCO data interpolated onto a 0.5 deg
+                Latitude-Longitude grid, or 'LLC' for ECCO data on its
+                native nominal 1 deg LLC0090 grid.
+
+
+        Returns:
+            A tuple of numpy arrays containing the extracted latitude, 
+            longitude, z-coordinate, yday, and a dictionary whos keys
+            are the extracted fields and whos values are arrays of the data.
+
+
+        """
+        # Check the specified months
+        if type(months) is not list:
+            raise ValueError("Invalid months parameter. Parameter must be a\n"
+                "list even if it only has one element.")
+        elif not set(months).issubset(range(11)):
+            raise ValueError("Invalid months parameter. Each value in then"
+                "list of months to extract must lie between 0 (January 15)\n"
+                "and 11 (December 15).")
+            
         # If initialized data exists, match grid of initialized data
         if hasattr(self, 'datagrid') and self.datagrid is not None:
             if grid is None or grid is self.datagrid:
                 grid = self.datagrid
             else:
-                raise ValueError("Initialized data exists on a "
-                    "different grid than the one specified")
+                raise ValueError("Invalid grid parameter. There is existing\n"
+                    "initialized data on another grid. The grid parameter must be\n"
+                    "identical or None, or the existing data must be cleared.")
 
         # If no input is given, set to default LatLon grid.
         elif grid is None:
@@ -141,23 +176,178 @@ class ecco:
         lat =  self.data['lat'][:, :]
         lon =  self.data['lon'][:, :]
 
-        if len(months) == 1:
-            yday = self.data['tim'][months[0]]
-        else:
-            yday = self.data['tim'][0]
+        yday = self.data['tim'][months]
+        if len(yday) == 1: yday = yday[0]
 
-        if dataInitializedHere is True:
+        if dataInitializedHere:
             self.close_data()
 
         return lat, lon, z, yday, data
 
 
+    def extract_region(self, region, fields, months, grid=None):
+        """Extract a rectangular region from the LatLon data.
+
+           Args:
+            region: An array-like input of the form 
+                region = [south, north, east, west] that defines the 
+                latitude-longitude limits of the region to be extracted.
+                The input latitudes must lie between -90 and 90 and the
+                input longitudes must lie between -180 and 180.
+                For example, to extract a box between 20S and 40N, and
+                30W and 5E, set box = [-20, 40, -30, 5].
+
+            fields (list): A list of strings corresponding to data fields to 
+                extract.
+
+            months (list): A list of integers corresponding to months to
+                extract. The count starts are 0 and each value must be between
+                0 and 11.
+
+            grid (str): The grid on which the data is stored. The options
+                are 'LatLon' for ECCO data interpolated onto a 0.5 deg
+                Latitude-Longitude grid, or 'LLC' for ECCO data on its
+                native nominal 1 deg LLC0090 grid.
+
+
+           Returns:
+            A tuple of numpy arrays containing the extracted latitude, 
+            longitude, z-coordinate, yday, and a dictionary whos keys
+            are the extracted fields and whos values are arrays of the data.
+            
+            NOTE: If the region spans the International Date Line (lon=+/-180),
+            then values east of the International Date Line will be assigned 
+            values greater than +180 to preserve continuity of the grid.
+            """
+
+        if not hasattr(region, 'index') or len(region) < 4:
+            raise ValueError("The region parameter must be an indexed "
+                "collection (a list, numpy array, tuple, etc.) of length "
+                "four (2 latitude and 2 longitude bounds each).")
+        else:
+            try: 
+                iswest = region[0] < 0
+            except:
+                raise ValueError("The region parameter must be an indexed "
+                    "collection of latitudes and longitudes.")
+
+        # Check the specified months
+        if not set(months).issubset(range(11)):
+            raise ValueError("Invalid months parameter. Each value in the\n"
+                "list of months to extract must lie between 0 (January 15)\n"
+                "and 11 (December 15).")
+            
+        # If initialized data exists, match grid of initialized data
+        if hasattr(self, 'datagrid') and self.datagrid is not None:
+            if grid is None or grid is self.datagrid:
+                grid = self.datagrid
+            else:
+                raise ValueError("Invalid grid parameter. There is existing\n"
+                    "initialized data on another grid. The grid parameter must be\n"
+                    "identical or None, or the existing data must be cleared.")
+
+        # If no input is given, set to default LatLon grid.
+        elif grid is None:
+            grid = 'LatLon'
+
+        # Initialize data if it hasn't been already
+        if not hasattr(self, 'data') or self.data is None:
+            self.init_data(fields=fields, grid=grid)
+            dataInitializedHere = True
+        else:
+            dataInitializedHere = False
+
+        # Extract sides of the box, flipping south/north coordinates if need be
+        south, north = np.sort(np.array(region)[[0, 1]])
+        west, east = np.array(region)[[2, 3]]
+
+        # Raise hell if something is amiss
+        if not -180 <= east <= 180 or not -180 <= west <= 180:
+            raise(ValueError, "Longitudes must lie between +/-180 degrees")
+        elif south < -90 or north > 90:
+            raise(ValueError, "Latitudes must lie between +/-90 degrees.")
+        elif east == west or south == north:
+            raise(ValueError, "Latitudes and longitudes must not be unique!")
+
+        # Wrapping is needed if coordinates cross the prime meridian
+        if west > east: 
+            acrossdateline = True
+        else:
+            acrossdateline = False
+
+
+        # Find indices for cutting, taking care not to produce bad indices.
+        if grid is 'LatLon':
+
+            # Square grid
+            jsouth = searchsorted_left (self.data['lat'][:, 0], south)
+            jnorth = searchsorted_right(self.data['lat'][:, 0], north)
+
+            iwest = searchsorted_left (self.data['lon'][0, :], west)
+            ieast = searchsorted_right(self.data['lon'][0, :], east)
+
+        elif grid is 'LLC':
+            raise NotImplementedError("Extracting regional domains from an "
+                "LLC grid is not implemented.")
+
+        # Cut out depth and ydays.
+        z    = -self.data['dep'][:]
+        yday = self.data['tim'][months]
+        if len(yday) == 1: yday = yday[0]
+
+        # Cut out latitude, longitude, and data, taking into account 
+        # whether or not the indicated region crosses the dateline.
+        if not acrossdateline: 
+            # Easy case
+            rlon = self.data['lon'][jsouth:jnorth, iwest:ieast]
+            rlat = self.data['lat'][jsouth:jnorth, iwest:ieast]
+
+            # Extract data from NetCDF files by referencing indices.
+            data = {}
+            for fld in fields:
+                data[fld] = self.data[fld][months, :, 
+                    jsouth:jnorth, iwest:ieast].squeeze()
+
+        elif acrossdateline:
+
+            # Wrapping case
+            nrlat = jnorth - jsouth
+            (nreast, nrwest) = (ieast, self.data['nlon']-iwest)
+
+            rlon  = np.zeros((nrlat, nreast+nrwest), dtype=np.float64)
+            rlat  = np.zeros((nrlat, nreast+nrwest), dtype=np.float64)
+
+            # Shift longitude coordinate to preserve monotonicity of data
+            rlon[:, nrwest:] = self.data['lon'][jsouth:jnorth, :ieast] + 360
+            rlon[:, :nrwest] = self.data['lon'][jsouth:jnorth, iwest:]
+
+            rlat[:, nrwest:] = self.data['lat'][jsouth:jnorth, :ieast]
+            rlat[:, :nrwest] = self.data['lat'][jsouth:jnorth, iwest:]
+
+            data = {}
+            for fld in fields:
+                data[fld] = np.zeros(
+                    (len(months), self.data['ndep'], nrlat, nreast+nrwest),
+                     dtype=np.float64)
+
+                data[fld][:, :, :, nrwest:] = self.data[fld][months, :, 
+                    jsouth:jnorth, :ieast].squeeze()
+
+                data[fld][:, :, :, :nrwest] = self.data[fld][months, :, 
+                    jsouth:jnorth, iwest:].squeeze()
+
+
+        if dataInitializedHere:
+            self.close_data()
+
+        return rlat, rlon, z, yday, data
 
 
     def close_data(self):
         """Close all data files and set associated values to None."""
-        for fld in datafiles.keys():
-            self.datafiles.close()
+        for fld in self.datafiles.keys():
+            self.datafiles[fld].close()
+
         self.datafiles = None
         self.datagrid = None
         self.data = None
@@ -268,3 +458,34 @@ class worldoceanatlas:
         """A class for accessing and viewing data from the 
             world ocean atlas."""
 
+
+
+
+
+
+
+
+def searchsorted_left(data, leftside):
+    """Return the index of data so that data[ileft] is either the first 
+    index in data or lying just left of leftside."""
+
+    if len(data.shape) > 1:
+        raise(ValueError, "Input data must be one-dimensional.")
+
+    ileft = np.max([
+        np.searchsorted(data, leftside,  side='left')-1, 0])
+
+    return ileft
+
+
+def searchsorted_right(data, rightside):
+    """Return the index of data so that data[iright] is either the last
+    index in data or lying just right of rightside"""
+
+    if len(data.shape) > 1:
+        raise(ValueError, "Input data must be one-dimensional.")
+
+    iright = np.min([
+        np.searchsorted(data, rightside,  side='right'), np.size(data)-1])
+
+    return iright

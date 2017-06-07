@@ -8,17 +8,21 @@ import globotopo
 # ----------------------------------------------------------------------------- 
 
 class nestedmodel:
-    def __init__(self, domain, res, dates, bcs,
+    def __init__(self, domain, dx, dates, bcs,
         name       = 'test',        # Just the name.
         parent     = 'ECCO',        # Name of the parent model
+        grid       = 'LatLon',      
+        dy         = None
     ):
-    """Initialize the nested model.
+        """Initialize the nested model.
 
         Args:
             domain (list): Latitutde/Longitude limits of the nested model
-                in the form domain = [south, north, west, east].
+                in the form domain = [south, north, west, east]. The specified
+                domain will be adjusted if necessary.
 
-            res: Resolution of the model in degrees.
+            dx: longitudinal resolution of the model in degrees. If dy is not
+                provided, it is set to dx.
 
             dates: Start and end date of the model 
                 in the form dates = [start, end]
@@ -27,16 +31,60 @@ class nestedmodel:
                 bcs = [bc_south, bc_north, bc_west, bc_east].
                 Each bc is a string indicating 'open' or 'land'.
 
-    """
+        """
 
+        if dy is None: dy = dx
+        
         self.domain = domain
-        self.res = res
-        self.dates = dates
+        self.dx     = dx
+        self.dy     = dy
+        self.dates  = dates
+        self.bcs    = bcs
+        self.name   = name
         self.parent = parent
-        self.name = name
+        self.grid   = grid
+
+        if grid is 'LatLon':
+            self.init_latlon_grid()
+        else:
+            raise NotImplementedError("The only type of grid we "
+                "can handle now is a LatLon grid.")
+
+
+
+    def init_latlon_grid(self):
+        """Initialize a latitude-longitude grid with constant spacing."""
+
+        # Pre-calculate some basic properties of the domain
+        [south, north, east, west] = self.domain
+
+        Lx = east-west
+        Ly = north-south
+
+        # Ensure actual computational domain contains the specification
+        self.nx = np.ceil(Lx/self.dx)
+        self.ny = np.ceil(Ly/self.dy)
+
+        # Now set actual values. Anchor in the southwest.
+        self.west = west
+        self.east = west + nx*self.dx
+
+        self.south = south
+        self.north = south + ny*self.dy
+
+        self.Lx = self.west-self.east
+        self.Ly = self.north-self.south
+
+        # Build the grid: XG, YG, XC, YC 
+        
+    
+
 
     def build_grid(self):
         """Build the horizontal grid of the child model."""
+
+
+        #self.YG = 
 
         # Constant Lat/Lon grid. 
 

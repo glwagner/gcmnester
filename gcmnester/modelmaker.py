@@ -7,7 +7,7 @@ import globotopo
 
 # ----------------------------------------------------------------------------- 
 
-class nestedmodel(object):
+class nestedmodel:
     def __init__(self, domain, res, dates, bcs,
         name       = 'test',        # Just the name.
         parent     = 'ECCO',        # Name of the parent model

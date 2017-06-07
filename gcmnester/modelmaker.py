@@ -15,17 +15,17 @@ class nestedmodel:
     """Initialize the nested model.
 
         Args:
-            domain (list):  Latitutde/Longitude limits of the nested model
-                            in the form domain = [south, north, west, east].
+            domain (list): Latitutde/Longitude limits of the nested model
+                in the form domain = [south, north, west, east].
 
-            res:            Resolution of the model in degrees.
+            res: Resolution of the model in degrees.
 
-            dates:          Start and end date of the model 
-                            in the form dates = [start, end]
+            dates: Start and end date of the model 
+                in the form dates = [start, end]
 
-            bcs:            Boundary conditions for the model in the form
-                            bcs = [bc_south, bc_north, bc_west, bc_east].
-                            Each bc is a string indicating 'open' or 'land'.
+            bcs: Boundary conditions for the model in the form
+                bcs = [bc_south, bc_north, bc_west, bc_east].
+                Each bc is a string indicating 'open' or 'land'.
 
     """
 

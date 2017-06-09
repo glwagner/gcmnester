@@ -20,15 +20,15 @@ def replace_namelist_param(namepath, param, saveorig=True):
     # Convert numpy array to list 
     if type(paramval) is np.ndarray:
         if len(paramval.shape) > 1:
-            raise(ValueError, "The numpy array that specifies the "
+            raise ValueError("The numpy array that specifies the "
                     "parameter value can only have one dimension.")
         paramval = paramval.tolist()
 
     if not os.path.isfile(namepath):
-        raise(ValueError, "The file {} does not exist!".format(namepath))
+        raise ValueError("The file {} does not exist!".format(namepath))
 
     if type(paramval) not in validtypes:
-        raise(ValueError, "The parameter type is not valid")
+        raise ValueError("The parameter type is not valid")
 
     # Read the file into a list of strings
     with open(namepath, 'r') as namefile:
@@ -41,7 +41,7 @@ def replace_namelist_param(namepath, param, saveorig=True):
         if len(line) > 0:
             if line[0] not in endchars and paramname in line and '=' in line:
                 if 'paramline' in locals():
-                    raise('RuntimeError', 
+                    raise 'RuntimeError', 
                         "Two lines have been found that contain the parameter name, \n"
                         "the equals sign '=', and do not appear to be a comment. \n"
                         "Check the input data file and remove the duplicate or "
@@ -62,7 +62,7 @@ def replace_namelist_param(namepath, param, saveorig=True):
         elif line[0] in endchars or '=' in line:
             endfound = True
         elif linenum == len(namelist):
-            raise('RuntimeError', "The end of the apparently multi-line parameter\n"
+            raise 'RuntimeError', "The end of the apparently multi-line parameter\n"
                     "specification could not be found.")
     paramendline = linenum
 
@@ -142,7 +142,7 @@ def write_data_diagnostics(fields, freqs, levels, savedir='.', overwrite=False):
         if overwrite:
             os.remove(diagFilename)
         else:
-            raise(ValueError, "File {} exists! "
+            raise ValueError("File {} exists! "
                     "Either delete it or set overwrite=True.".format(diagFilename))
 
     (i, body) = (0, str())

@@ -20,6 +20,8 @@ ecco.init_data(fields=fields, grid='LatLon')
 lat, lon, z, yday, data = ecco.extract_globe(
     fields, [0])
 
+print(z)
+
 # Extract regional North Pacific climatological data for the month of January
 region = [5, 55, 100, -100]
 paclat, paclon, z, pacyday, pacdata = ecco.extract_region(

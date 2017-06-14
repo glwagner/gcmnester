@@ -1,0 +1,3 @@
+# Ignore all mat-files in all directories, obviously
+
+**/*.mat

@@ -1,0 +1,10 @@
+Metadata-Version: 1.0
+Name: gcmnester
+Version: 0.1
+Summary: A tool for building nested models in MITgcm.
+Home-page: http://github.com/glwagner/gcmnester
+Author: Gregory L. Wagner
+Author-email: wagner.greg@gmail.com
+License: MIT
+Description: UNKNOWN
+Platform: UNKNOWN

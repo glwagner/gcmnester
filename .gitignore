@@ -1,3 +1,6 @@
 # Ignore vim swp files and python pyc files
 **/*.pyc
 **/*.swp
+
+# Ignore MATLAB files
+**/*.mat

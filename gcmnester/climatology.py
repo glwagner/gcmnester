@@ -3,12 +3,12 @@ import numpy as np
 import netCDF4 as nc
 
 
-class ecco:
+class ECCO:
     def __init__(self, 
         eccopath='../../data/ECCOv4r2'
     ):
         """Initialize an ecco object giving access to the
-            ecco climatological data."""
+            ECCO data."""
 
 
         if not os.path.isdir(eccopath):
@@ -16,10 +16,10 @@ class ecco:
                 "The directory %s does not exist" % eccopath)
 
         self.eccopath = eccopath
-        self.get_field_descriptions()
+        self.fieldDescriptions = get_ecco_field_descriptions()
 
 
-    def init_data(self, fields=['THETA', 'SALT'], grid='LatLon'):
+    def init_data(self, fields, grid='LatLon'):
         """Initialize a bunch of NetCDF objects corresponding to climatological 
             ECCO fields.
 
@@ -42,13 +42,13 @@ class ecco:
                 
                 where time, dep, lat, and lon are indices to be extracted. The grid
                 has shape (12, 50, 360, 720), corresponding to a data from 12 years 
-                on a 0.5 deg with 50 vertical levels. The convention is that depth is 
-                *positive*, which means it gets larger and more positive towards
+                on a 0.5 deg with 50 vertical levels. The convention is that depth  
+                is *positive*, which means it gets larger and more positive towards
                 negative-z. Each file contains the fields dep, lat, lon, tim, 
                 FIELD (the actual data), and index vectors i1, i2, i3, i4.
         """
 
-        self.get_field_descriptions()
+        self.fieldDescriptions = get_ecco_field_descriptions()
         validFields = self.fieldDescriptions.keys()
 
         # Check inputs and assign path to data
@@ -111,7 +111,6 @@ class ecco:
 
 
     def extract_globe(self, fields, months, grid=None):
-        
         """Extract global, full-depth data for the indicated fields and months
         on the indicated grid.
 
@@ -184,11 +183,48 @@ class ecco:
 
         return lat, lon, z, yday, data
 
+    
+
+    def extract_regional_stratification(self, region, months, grid=None):
+        """Extract profiles of temperature and salinity for a specified 
+        region and time-frame.
+
+        Args:
+            region: An array-like input of the form 
+                region = [south, north, east, west] that defines the 
+                latitude-longitude limits of the region to be extracted.
+                The input latitudes must lie between -90 and 90 and the
+                input longitudes must lie between -180 and 180.
+                For example, to extract a region between 20S and 40N, and
+                30W and 5E, set box = [-20, 40, -30, 5].
+
+            months (list): A list of integers corresponding to months to
+                extract. The count starts are 0 and each value must be between
+                0 and 11.
+
+            grid (str): The grid on which the data is stored. The options
+                are 'LatLon' for ECCO data interpolated onto a 0.5 deg
+                Latitude-Longitude grid, or 'LLC' for ECCO data on its
+                native nominal 1 deg LLC0090 grid.
+
+        Returns:
+            Two 1 or 2d arrays T, S with dimension T[time, dep]. If only one 
+            month is specified, the arrays are one-dimensional.
+        """
+        lat, lon, z, yday, data = self.extract_region(
+            region, ['THETA', 'SALT'], months, grid=grid)
+
+        T = np.nanmean(data['THETA'], axis=(-1, -2))
+        S = np.nanmean(data['SALT'],  axis=(-1, -2))
+
+        return T, S
+
+
 
     def extract_region(self, region, fields, months, grid=None):
         """Extract a rectangular region from the LatLon data.
 
-           Args:
+        Args:
             region: An array-like input of the form 
                 region = [south, north, east, west] that defines the 
                 latitude-longitude limits of the region to be extracted.
@@ -353,95 +389,12 @@ class ecco:
         self.data = None
 
 
-    def get_field_descriptions(self):
-        """Load descriptions of the fields given in the README in
-            ECCO's interp_climatology directory."""
-
-        self.fieldDescriptions = {
-            'ADVeHEFF'  :  "Eastward Advective Flux of eff ice thickn",
-            'ADVe_SLT'  :  "Eastward Advective Flux of Salinity",
-            'ADVeSNOW'  :  "Eastward Advective Flux of eff snow thickn",
-            'ADVe_TH'   :  "Eastward Advective Flux of Pot.Temperature",
-            'ADVnHEFF'  :  "Northward Advective Flux of eff ice thickn",
-            'ADVn_SLT'  :  "Northward Advective Flux of Salinity",
-            'ADVnSNOW'  :  "Northward Advective Flux of eff snow thickn",
-            'ADVn_TH'   :  "Northward Advective Flux of Pot.Temperature",
-            'ADVr_SLT'  :  "Vertical   Advective Flux of Salinity",
-            'ADVr_TH'   :  "Vertical   Advective Flux of Pot.Temperature",
-            'ADVxHEFF'  :  "U Comp. Advective Flux of eff ice thickn",
-            'ADVx_SLT'  :  "U Comp. Advective Flux of Salinity",
-            'ADVxSNOW'  :  "U Comp. Advective Flux of eff snow thickn",
-            'ADVx_TH'   :  "U Comp. Advective Flux of Pot.Temperature",
-            'ADVyHEFF'  :  "V Comp. Advective Flux of eff ice thickn",
-            'ADVy_SLT'  :  "V Comp. Advective Flux of Salinity",
-            'ADVySNOW'  :  "V Comp. Advective Flux of eff snow thickn",
-            'ADVy_TH'   :  "V Comp. Advective Flux of Pot.Temperature",
-            'DFeEHEFF'  :  "Eastward Diffusive Flux of eff ice thickn",
-            'DFeE_SLT'  :  "Eastward Diffusive Flux of Salinity",
-            'DFeESNOW'  :  "Eastward Diffusive Flux of eff snow thickn",
-            'DFeE_TH'   :  "Eastward Diffusive Flux of Pot.Temperature",
-            'DFnEHEFF'  :  "Northward Diffusive Flux of eff ice thickn",
-            'DFnE_SLT'  :  "Northward Diffusive Flux of Salinity",
-            'DFnESNOW'  :  "Northward Diffusive Flux of eff snow thickn",
-            'DFnE_TH'   :  "Northward Diffusive Flux of Pot.Temperature",
-            'DFrE_SLT'  :  "Vertical Diffusive Flux of Salinity    (Explicit part)",
-            'DFrE_TH'   :  "Vertical Diffusive Flux of Pot.Temperature (Explicit part)",
-            'DFrI_SLT'  :  "Vertical Diffusive Flux of Salinity    (Implicit part)",
-            'DFrI_TH'   :  "Vertical Diffusive Flux of Pot.Temperature (Implicit part)",
-            'DFxEHEFF'  :  "U Comp. Diffusive Flux of eff ice thickn",
-            'DFxE_SLT'  :  "U Comp. Diffusive Flux of Salinity",
-            'DFxESNOW'  :  "U Comp. Diffusive Flux of eff snow thickn",
-            'DFxE_TH'   :  "U Comp. Diffusive Flux of Pot.Temperature",
-            'DFyEHEFF'  :  "V Comp. Diffusive Flux of eff ice thickn",
-            'DFyE_SLT'  :  "V Comp. Diffusive Flux of Salinity",
-            'DFyESNOW'  :  "V Comp. Diffusive Flux of eff snow thickn",
-            'DFyE_TH'   :  "V Comp. Diffusive Flux of Pot.Temperature",
-            'DRHODR'    :  "Stratification: d.Sigma/dr (kg/m3/r_unit)",
-            'ETAN'      :  "Free Surface Height Anomaly (Ocean-Ice Interface)",
-            'EVELMASS'  :  "Eastward Mass-Weighted Comp of Velocity (m/s)",
-            'EVELSTAR'  :  "Eastward Comp of Bolus Velocity (m/s)",
-            'GM_PsiX'   :  "GM Bolus transport stream-function' : U component",
-            'GM_PsiY'   :  "GM Bolus transport stream-function' : V component",
-            'MXLDEPTH'  :  "Mixed-Layer Depth (>0)",
-            'NVELMASS'  :  "Northward Mass-Weighted Comp of Velocity (m/s)",
-            'NVELSTAR'  :  "Northward Comp of Bolus Velocity (m/s)",
-            'oceFWflx'  :  "net surface Fresh-Water flux into the ocean (+=down), >0 decreases salinity",
-            'oceQnet'   :  "net surface heat flux into the ocean (+=down), >0 increases theta",
-            'oceQsw'    :  "net Short-Wave radiation (+=down), >0 increases theta",
-            'oceSPflx'  :  "net surface Salt flux rejected into the ocean during freezing, (+=down),",
-            'oceSPtnd'  :  "salt tendency due to salt plume flux >0 increases salinity",
-            'oceTAUE'   :  "Eastward surface wind stress, >0 increases eVel",
-            'oceTAUN'   :  "Northward surface wind stress, >0 increases nVel",
-            'oceTAUX'   :  "U Comp. surface wind stress, >0 increases uVel",
-            'oceTAUY'   :  "V Comp. surface wind stress, >0 increases vVel",
-            'PHIBOT'    :  "Bottom Pressure Pot.(p/rho) Anomaly",
-            'PHIHYD'    :  "Hydrostatic Pressure Pot.(p/rho) Anomaly",
-            'RHOAnoma'  :  "Density Anomaly (=Rho-rhoConst)",
-            'SALT'      :  "Salinity",
-            'SFLUX'     :  "total salt flux (match salt-content variations), >0 increases salt",
-            'SIarea'    :  "SEAICE fractional ice-covered area [0 to 1]",
-            'SIatmFW'   :  "Net freshwater flux from atmosphere & land (+=down)",
-            'SIatmQnt'  :  "Net atmospheric heat flux, >0 decreases theta",
-            'sIceLoad'  :  "sea-ice loading (in Mass of ice+snow / area unit)",
-            'SIheff'    :  "SEAICE effective ice thickness",
-            'SIhsnow'   :  "SEAICE effective snow thickness",
-            'TFLUX'     :  "total heat flux (match heat-content variations), >0 increases theta, W/m2",
-            'THETA'     :  "Potential Temperature",
-            'UVELMASS'  :  "U Mass-Weighted Comp of Velocity (m/s)",
-            'UVELSTAR'  :  "U Comp of Bolus Velocity (m/s)",
-            'VVELMASS'  :  "V Mass-Weighted Comp of Velocity (m/s)",
-            'VVELSTAR'  :  "V Comp of Bolus Velocity (m/s)",
-            'WVELMASS'  :  "Vertical Mass-Weighted Comp of Velocity",
-            'WVELSTAR'  :  "Vertical Comp of Bolus Velocity (m/s)",
-        }
-
-
-    def describe_fields(self, fields=['THETA']):
+    def describe_fields(self, fields=None):
         """Print a description of the stored ECCO fields."""
 
-        self.get_field_descriptions()
+        self.fieldDescriptions = get_ecco_field_descriptions()
 
-        if fields is 'all':
+        if fields is None:
             fields = fieldDescriptions.keys()
 
         for fld in fields:
@@ -450,13 +403,9 @@ class ecco:
 
 
 
-# ----------------------------------------------------------------------------- 
 
 
-class worldoceanatlas:
-    def __init__(self, atlaspath=''):
-        """A class for accessing and viewing data from the 
-            world ocean atlas."""
+
 
 
 
@@ -478,6 +427,8 @@ def searchsorted_left(data, leftside):
     return ileft
 
 
+
+
 def searchsorted_right(data, rightside):
     """Return the index of data so that data[iright] is either the last
     index in data or lying just right of rightside"""
@@ -486,6 +437,96 @@ def searchsorted_right(data, rightside):
         raise(ValueError, "Input data must be one-dimensional.")
 
     iright = np.min([
-        np.searchsorted(data, rightside,  side='right'), np.size(data)-1])
+        np.searchsorted(data, rightside,  side='right')+1, np.size(data)-1])
 
     return iright
+
+
+
+
+def get_ecco_field_descriptions():
+    """Return a dictionary of descriptions of the fields given in the README 
+        in ECCO's interp_climatology directory."""
+
+    fieldDescriptions = {
+        'ADVeHEFF'  :  "Eastward Advective Flux of eff ice thickn",
+        'ADVe_SLT'  :  "Eastward Advective Flux of Salinity",
+        'ADVeSNOW'  :  "Eastward Advective Flux of eff snow thickn",
+        'ADVe_TH'   :  "Eastward Advective Flux of Pot.Temperature",
+        'ADVnHEFF'  :  "Northward Advective Flux of eff ice thickn",
+        'ADVn_SLT'  :  "Northward Advective Flux of Salinity",
+        'ADVnSNOW'  :  "Northward Advective Flux of eff snow thickn",
+        'ADVn_TH'   :  "Northward Advective Flux of Pot.Temperature",
+        'ADVr_SLT'  :  "Vertical   Advective Flux of Salinity",
+        'ADVr_TH'   :  "Vertical   Advective Flux of Pot.Temperature",
+        'ADVxHEFF'  :  "U Comp. Advective Flux of eff ice thickn",
+        'ADVx_SLT'  :  "U Comp. Advective Flux of Salinity",
+        'ADVxSNOW'  :  "U Comp. Advective Flux of eff snow thickn",
+        'ADVx_TH'   :  "U Comp. Advective Flux of Pot.Temperature",
+        'ADVyHEFF'  :  "V Comp. Advective Flux of eff ice thickn",
+        'ADVy_SLT'  :  "V Comp. Advective Flux of Salinity",
+        'ADVySNOW'  :  "V Comp. Advective Flux of eff snow thickn",
+        'ADVy_TH'   :  "V Comp. Advective Flux of Pot.Temperature",
+        'DFeEHEFF'  :  "Eastward Diffusive Flux of eff ice thickn",
+        'DFeE_SLT'  :  "Eastward Diffusive Flux of Salinity",
+        'DFeESNOW'  :  "Eastward Diffusive Flux of eff snow thickn",
+        'DFeE_TH'   :  "Eastward Diffusive Flux of Pot.Temperature",
+        'DFnEHEFF'  :  "Northward Diffusive Flux of eff ice thickn",
+        'DFnE_SLT'  :  "Northward Diffusive Flux of Salinity",
+        'DFnESNOW'  :  "Northward Diffusive Flux of eff snow thickn",
+        'DFnE_TH'   :  "Northward Diffusive Flux of Pot.Temperature",
+        'DFrE_SLT'  :  "Vertical Diffusive Flux of Salinity    (Explicit part)",
+        'DFrE_TH'   :  "Vertical Diffusive Flux of Pot.Temperature (Explicit part)",
+        'DFrI_SLT'  :  "Vertical Diffusive Flux of Salinity    (Implicit part)",
+        'DFrI_TH'   :  "Vertical Diffusive Flux of Pot.Temperature (Implicit part)",
+        'DFxEHEFF'  :  "U Comp. Diffusive Flux of eff ice thickn",
+        'DFxE_SLT'  :  "U Comp. Diffusive Flux of Salinity",
+        'DFxESNOW'  :  "U Comp. Diffusive Flux of eff snow thickn",
+        'DFxE_TH'   :  "U Comp. Diffusive Flux of Pot.Temperature",
+        'DFyEHEFF'  :  "V Comp. Diffusive Flux of eff ice thickn",
+        'DFyE_SLT'  :  "V Comp. Diffusive Flux of Salinity",
+        'DFyESNOW'  :  "V Comp. Diffusive Flux of eff snow thickn",
+        'DFyE_TH'   :  "V Comp. Diffusive Flux of Pot.Temperature",
+        'DRHODR'    :  "Stratification: d.Sigma/dr (kg/m3/r_unit)",
+        'ETAN'      :  "Free Surface Height Anomaly (Ocean-Ice Interface)",
+        'EVELMASS'  :  "Eastward Mass-Weighted Comp of Velocity (m/s)",
+        'EVELSTAR'  :  "Eastward Comp of Bolus Velocity (m/s)",
+        'GM_PsiX'   :  "GM Bolus transport stream-function' : U component",
+        'GM_PsiY'   :  "GM Bolus transport stream-function' : V component",
+        'MXLDEPTH'  :  "Mixed-Layer Depth (>0)",
+        'NVELMASS'  :  "Northward Mass-Weighted Comp of Velocity (m/s)",
+        'NVELSTAR'  :  "Northward Comp of Bolus Velocity (m/s)",
+        'oceFWflx'  :  "net surface Fresh-Water flux into the ocean (+=down), >0 decreases salinity",
+        'oceQnet'   :  "net surface heat flux into the ocean (+=down), >0 increases theta",
+        'oceQsw'    :  "net Short-Wave radiation (+=down), >0 increases theta",
+        'oceSPflx'  :  "net surface Salt flux rejected into the ocean during freezing, (+=down),",
+        'oceSPtnd'  :  "salt tendency due to salt plume flux >0 increases salinity",
+        'oceTAUE'   :  "Eastward surface wind stress, >0 increases eVel",
+        'oceTAUN'   :  "Northward surface wind stress, >0 increases nVel",
+        'oceTAUX'   :  "U Comp. surface wind stress, >0 increases uVel",
+        'oceTAUY'   :  "V Comp. surface wind stress, >0 increases vVel",
+        'PHIBOT'    :  "Bottom Pressure Pot.(p/rho) Anomaly",
+        'PHIHYD'    :  "Hydrostatic Pressure Pot.(p/rho) Anomaly",
+        'RHOAnoma'  :  "Density Anomaly (=Rho-rhoConst)",
+        'SALT'      :  "Salinity",
+        'SFLUX'     :  "total salt flux (match salt-content variations), >0 increases salt",
+        'SIarea'    :  "SEAICE fractional ice-covered area [0 to 1]",
+        'SIatmFW'   :  "Net freshwater flux from atmosphere & land (+=down)",
+        'SIatmQnt'  :  "Net atmospheric heat flux, >0 decreases theta",
+        'sIceLoad'  :  "sea-ice loading (in Mass of ice+snow / area unit)",
+        'SIheff'    :  "SEAICE effective ice thickness",
+        'SIhsnow'   :  "SEAICE effective snow thickness",
+        'TFLUX'     :  "total heat flux (match heat-content variations), >0 increases theta, W/m2",
+        'THETA'     :  "Potential Temperature",
+        'UVELMASS'  :  "U Mass-Weighted Comp of Velocity (m/s)",
+        'UVELSTAR'  :  "U Comp of Bolus Velocity (m/s)",
+        'VVELMASS'  :  "V Mass-Weighted Comp of Velocity (m/s)",
+        'VVELSTAR'  :  "V Comp of Bolus Velocity (m/s)",
+        'WVELMASS'  :  "Vertical Mass-Weighted Comp of Velocity",
+        'WVELSTAR'  :  "Vertical Comp of Bolus Velocity (m/s)",
+    }
+
+
+    return fieldDescriptions
+
+

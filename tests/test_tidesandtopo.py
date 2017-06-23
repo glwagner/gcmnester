@@ -22,7 +22,7 @@ times = {}
 t0 = time.time()
 
 # Extract topography
-topodata = globotopo.smithsandwell(
+topodata = globotopo.SmithSandwell(
     datapath='/data5/glwagner/Numerics/patches/globotopo/data/topo_18.1.img')
 
 topolat, topolon, topo = topodata.get_region(domain, subsample=subsample)
@@ -34,7 +34,7 @@ times['topo'] = time.time() - t0
 t0 = time.time()
 
 # Extract tides
-driver = pyotps.tidaldriver(
+driver = pyotps.TidalDriver(
     otpspath = '/data5/glwagner/Numerics/patches/pyotps/OTPS2',
     otpstype = 'v1')
 
@@ -59,7 +59,7 @@ im = {}
 im['topo']   = axes[0].imshow(topo,         origin='lower', aspect='auto', 
     vmax=0)
 im['amps']   = axes[1].imshow(amps['m2'],   origin='lower', aspect='auto', 
-    vmax=1)
+    vmax=5)
 im['phases'] = axes[2].imshow(phases['m2'], origin='lower', aspect='auto')
 
 i = 0

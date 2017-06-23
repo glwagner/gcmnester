@@ -10,17 +10,15 @@ eccopath = '/data5/glwagner/Numerics/patches/data/ECCOv4r2'
 fields = ['THETA', 'SALT', 'NVELMASS', 'EVELMASS']
 
 # Initialize the ecco climatology object and describe fields
-ecco = climatology.ecco(eccopath=eccopath)
+ecco = climatology.ECCO(eccopath=eccopath)
 ecco.describe_fields(fields=fields)
 
 # Initialize data
-ecco.init_data(fields=fields, grid='LatLon')
+ecco.init_data(fields, grid='LatLon')
 
 # Extract global climatological data for the month of January
 lat, lon, z, yday, data = ecco.extract_globe(
     fields, [0])
-
-print(z)
 
 # Extract regional North Pacific climatological data for the month of January
 region = [5, 55, 100, -100]

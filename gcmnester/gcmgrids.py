@@ -3,7 +3,8 @@ from __future__ import division
 import numpy as np
 
 
-class hgrid:
+
+class HorizontalGrid:
     def __init__(self, xC, yC, xG, yG):
         """A class of horizontal grids that correspond to grids commonly
         used in MITgcm.
@@ -19,13 +20,13 @@ class hgrid:
             one more vertex than cell center along the two coordinates..
         """
 
-        nx, ny = xC.shape 
+        self.nx, self.ny = xC.shape 
 
         if xC.shape != yC.shape:
             raise ValueError("The input xC and yC must have the same shape.")
         elif xG.shape != yG.shape:
             raise ValueError("The input xG and yG must have the same shape.")
-        elif (nx+1, ny+1) != xG.shape:
+        elif (self.nx+1, self.ny+1) != xG.shape:
             raise ValueError("The input xG and yG must have an extra grid point"
                 "in both dimensions.")
 
@@ -51,8 +52,9 @@ class hgrid:
 
 
 
-class latlongrid(hgrid):
-    def __init__(self, domain, dx, dy=None):
+
+class LatLonGrid(HorizontalGrid):
+    def __init__(self, domain, dx, dy=None, tilesize=1):
         """Define properties and a few functions associated with a 
         constant Latitude/Longitude MITgcm grid on the domain
         domain = [south, north, west, east] and with grid spacing (dx, dy).       
@@ -72,6 +74,9 @@ class latlongrid(hgrid):
                 dy (float): The optional latitudinal spacing. If dy is not 
                     specified, it is set equal to dx.
 
+                tilesize (int): The size of a square tile in integer grid points.
+                    The default is 1, which produces no change in the size of the
+                    grid.
         """
 
         if dy is None: dy = dx
@@ -98,8 +103,12 @@ class latlongrid(hgrid):
         Ly = north-south
 
         # Ensure actual computational domain contains the specification
-        self.nx = np.ceil(Lx/self.dx)
-        self.ny = np.ceil(Ly/self.dy)
+        nx0 = np.ceil(Lx/self.dx)
+        ny0 = np.ceil(Ly/self.dy)
+
+        # Round up to nearest multiple of the tilesize
+        self.nx = int(tilesize*np.ceil(nx0/tilesize))
+        self.ny = int(tilesize*np.ceil(ny0/tilesize))
 
         # Now set actual values. Anchor in the southwest.
         self.west = west
@@ -107,6 +116,13 @@ class latlongrid(hgrid):
 
         self.south = south
         self.north = south + self.ny*self.dy
+
+        # Adjust domain so that center is (almost) invariant to the choice of 
+        # 'tilesize'
+        self.west  = self.west  - self.dx*(self.nx-nx0)//2
+        self.east  = self.east  - self.dx*(self.nx-nx0)//2
+        self.north = self.north - self.dy*(self.ny-ny0)//2
+        self.south = self.south - self.dy*(self.ny-ny0)//2
 
         self.Lx = self.west-self.east
         self.Ly = self.north-self.south
@@ -127,10 +143,14 @@ class latlongrid(hgrid):
         xG, yG = np.meshgrid(xG, yG)
         xC, yC = np.meshgrid(xC, yC)
 
-        hgrid.__init__(self, xC, yC, xG, yG)
+        HorizontalGrid.__init__(self, xC, yC, xG, yG)
         
 
-class zgrid:
+
+
+
+
+class VerticalGrid:
     def __init__(self, zF):
         """Initialize an MITgcm vertical grid.
         
@@ -152,6 +172,8 @@ class zgrid:
         # Calculate dz(dzF), or the rate of change of the
         # vertical grid spacing
         self.dzdzF = self.dzF[1:] - self.dzF[:-1] 
+
+        self.nz = self.zC.size
 
 ### From "GRID.h":
 #

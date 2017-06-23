@@ -29,7 +29,7 @@ from scipy.interpolate import griddata
 #       the first wet point.
 
 
-class obc:
+class OpenBoundaryCondition:
     def __init__(self, edge, hgrid, zgrid):
         """A class that describes open boundaries in MITgcm, 
         which is on an Arakawa C-grid.
@@ -105,6 +105,19 @@ class obc:
 
 
 
+    def set_constant_stratification(self, T, S):
+        """Set the open boundary condition to constant stratification
+        with zero velocity."""
+
+        # Broadcast to size of open boundary
+        self.T = T.reshape(self.nz, 1)*np.ones((self.nz, self.nb))
+        self.S = S.reshape(self.nz, 1)*np.ones((self.nz, self.nb))
+
+        self.U = np.zeros((self.nz, self.nb))
+        self.V = np.zeros((self.nz, self.nb))
+
+
+
     def interp_tracer_field(self, fieldname, sdata, sxC, syC, szC, 
         method='linear', fill_value=np.nan):
         
@@ -151,4 +164,3 @@ class obc:
             griddata((X, Y, Z), data, 
             (Xi.ravel(), Yi.ravel(), Zi.ravel()), 
             method=method, fill_value=fill_value))
-

@@ -1,5 +1,7 @@
+gcmnester/__init__.py
 gcmnester/climatology.py
 gcmnester/gcmgrids.py
+gcmnester/initialcondition.py
 gcmnester/modelmaker.py
 gcmnester/openboundaries.py
 gcmnester.egg-info/PKG-INFO
